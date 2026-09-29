@@ -108,7 +108,7 @@ export default function App() {
         <div class="project-metrics">
           <div><strong>{store.state.segments.length}</strong><span>转写片段</span></div>
           <div><strong>{store.state.themes.length}</strong><span>层级主题</span></div>
-          <div><strong>{store.state.segments.filter((segment) => segment.assignments.A.join('|') !== segment.assignments.B.join('|')).length}</strong><span>编码分歧</span></div>
+          <div><strong>{store.state.segments.filter((segment) => store.isDisagreement(segment)).length}</strong><span>编码分歧</span></div>
           <div><strong>{store.state.revision}</strong><span>本地修订</span></div>
         </div>
       </section>
@@ -125,12 +125,13 @@ export default function App() {
           <div class="health-grid">
             <div class="health-item"><strong>{store.state.segments.filter((segment) => !segment.assignments.A.length && !segment.assignments.B.length).length}</strong><span>未编码片段</span><small>可批量选择后重新编码</small></div>
             <div class="health-item"><strong>{store.state.themes.filter((theme) => !theme.definition).length}</strong><span>缺少定义的主题</span><small>定义会帮助后续编码保持一致</small></div>
-            <div class="health-item"><strong>{store.state.segments.filter((segment) => segment.assignments.A.join('|') !== segment.assignments.B.join('|')).length}</strong><span>双编码分歧</span><small>使用双人比较逐条处理</small></div>
+            <div class="health-item"><strong>{store.state.segments.filter((segment) => store.isDisagreement(segment)).length}</strong><span>双编码分歧</span><small>使用双人比较逐条处理</small></div>
+            <div class="health-item"><strong>{store.totalPendingCount()}</strong><span>待复核编码</span><small>定义新版发布后，在「版本复核」页签处理</small></div>
           </div>
         </Paper>
         <Paper class="panel export-panel" elevation={0}>
           <div class="panel-heading"><div><span class="eyebrow">EXPORT & BACKUP</span><h3>研究数据出口</h3></div></div>
-          <p>导出包含完整主题路径、双编码者判断、备忘录、主题示例和审计记录。CSV 适合表格复核，JSON 可完整回档。</p>
+          <p>导出包含完整主题路径、双编码者判断、定义版本号与复核状态、备忘录、主题示例和审计记录。CSV 适合表格复核，JSON 可完整回档。</p>
           <div class="button-row"><Button variant="contained" onClick={() => store.downloadExport('json')}>下载 JSON 完整包</Button><Button variant="outlined" onClick={() => store.downloadExport('csv')}>下载 CSV 编码表</Button></div>
         </Paper>
       </section>

@@ -1,5 +1,13 @@
 export type CoderId = 'A' | 'B';
 
+export interface DefinitionVersion {
+  id: string;
+  version: number;
+  text: string;
+  createdAt: string;
+  note?: string;
+}
+
 export interface Theme {
   id: string;
   name: string;
@@ -8,6 +16,16 @@ export interface Theme {
   definition: string;
   memo: string;
   examples: string[];
+  currentVersionId: string;
+  definitionVersions: DefinitionVersion[];
+}
+
+export type AssignmentStatus = 'current' | 'pending' | 'legacy';
+
+export interface Assignment {
+  themeId: string;
+  versionId: string;
+  status: AssignmentStatus;
 }
 
 export interface Segment {
@@ -17,7 +35,7 @@ export interface Segment {
   speaker: string;
   time: string;
   text: string;
-  assignments: Record<CoderId, string[]>;
+  assignments: Record<CoderId, Assignment[]>;
   note: string;
 }
 

@@ -10,7 +10,7 @@ export default function ThemeTree(props: { store: Store; onCreate: (parentId?: s
   const activeSegment = () => props.store.state.segments.find((segment) => segment.id === props.store.state.activeSegmentId);
 
   const countFor = (themeId: string) => props.store.state.segments.reduce((count, segment) => (
-    count + (segment.assignments.A.includes(themeId) || segment.assignments.B.includes(themeId) ? 1 : 0)
+    count + ((['A', 'B'] as const).some((coder) => segment.assignments[coder].some((assignment) => assignment.themeId === themeId)) ? 1 : 0)
   ), 0);
 
   return (
@@ -23,7 +23,7 @@ export default function ThemeTree(props: { store: Store; onCreate: (parentId?: s
         <Button size="small" variant="contained" onClick={() => props.onCreate()}>＋ 一级主题</Button>
       </div>
       <input class="native-input full" placeholder="筛选主题" value={query()} onInput={(event) => setQuery(event.currentTarget.value)} />
-      <div class="theme-help">勾选 A / B 可将当前片段分配给该主题；不同判断会以“分歧”提示。</div>
+      <div class="theme-help">勾选 A / B 可将当前片段分配给该主题，编码会绑定该主题当前的定义版本；定义更新后旧编码标记为“待复核”。</div>
       <div class="theme-tree">
         <For each={themes()}>{(theme) => {
           const depth = () => {
@@ -37,13 +37,15 @@ export default function ThemeTree(props: { store: Store; onCreate: (parentId?: s
             }
             return level;
           };
-          const assignmentA = () => activeSegment()?.assignments.A.includes(theme.id) ?? false;
-          const assignmentB = () => activeSegment()?.assignments.B.includes(theme.id) ?? false;
+          const assignmentA = () => activeSegment()?.assignments.A.some((assignment) => assignment.themeId === theme.id) ?? false;
+          const assignmentB = () => activeSegment()?.assignments.B.some((assignment) => assignment.themeId === theme.id) ?? false;
+          const pendingCount = () => props.store.themePendingCount(theme.id);
           return (
             <div class="theme-row" classList={{ active: props.store.state.activeThemeId === theme.id, disagree: assignmentA() !== assignmentB() }}>
               <button class="theme-main" style={{ '--depth': depth(), '--theme-color': theme.color }} onClick={() => props.store.selectTheme(theme.id)}>
                 <span class="theme-color" />
                 <span class="theme-name">{theme.name}</span>
+                <Show when={pendingCount()}><span class="theme-review" title={`${pendingCount()} 条编码待复核`}>复{pendingCount()}</span></Show>
                 <span class="theme-count">{countFor(theme.id)}</span>
               </button>
               <div class="theme-actions">

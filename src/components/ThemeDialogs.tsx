@@ -37,7 +37,7 @@ export function MergeThemeDialog(props: { store: Store; open: boolean; onClose: 
     <div class="modal-backdrop" classList={{ hidden: !props.open }} onClick={props.onClose}>
       <section class="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <header><div><span class="eyebrow">MERGE</span><h2>合并主题</h2></div><button class="modal-close" onClick={props.onClose}>×</button></header>
-        <div class="warning-box">合并后，来源主题的所有片段编码与子主题会迁移到目标主题，原主题被删除。此操作可通过撤销恢复。</div>
+        <div class="warning-box">合并后，来源主题的所有片段编码与子主题会迁移到目标主题，原主题被删除。来源主题的定义版本历史会一并迁入目标主题；与目标当前定义不一致的编码将标记为待复核。此操作可通过撤销恢复。</div>
         <div class="merge-route"><strong>{source()?.name ?? '未选择'}</strong><span>→</span><select class="native-select" value={target()} onChange={(event) => setTarget(event.currentTarget.value)}><option value="">选择目标主题</option><For each={candidates()}>{(theme) => <option value={theme.id}>{theme.name}</option>}</For></select></div>
         <footer><button class="button secondary" onClick={props.onClose}>取消</button><button class="button danger" disabled={!target()} onClick={submit}>确认合并</button></footer>
       </section>
@@ -49,7 +49,7 @@ export function SplitThemeDialog(props: { store: Store; open: boolean; onClose: 
   const [name, setName] = createSignal('');
   const [selected, setSelected] = createSignal<string[]>([]);
   const source = () => props.store.state.themes.find((theme) => theme.id === props.store.state.activeThemeId);
-  const affected = createMemo(() => props.store.state.segments.filter((segment) => source() && (segment.assignments.A.includes(source()!.id) || segment.assignments.B.includes(source()!.id))));
+  const affected = createMemo(() => props.store.state.segments.filter((segment) => source() && (segment.assignments.A.some((assignment) => assignment.themeId === source()!.id) || segment.assignments.B.some((assignment) => assignment.themeId === source()!.id))));
   const submit = () => {
     if (source() && name().trim() && selected().length) props.store.splitTheme(source()!.id, name().trim(), selected());
     setName(''); setSelected([]);
@@ -59,7 +59,7 @@ export function SplitThemeDialog(props: { store: Store; open: boolean; onClose: 
     <div class="modal-backdrop" classList={{ hidden: !props.open }} onClick={props.onClose}>
       <section class="modal-card wide" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <header><div><span class="eyebrow">SPLIT</span><h2>从“{source()?.name}”拆分新主题</h2></div><button class="modal-close" onClick={props.onClose}>×</button></header>
-        <p class="modal-intro">选择要迁入新主题的片段，其余片段继续保留在原主题。所有编码者的判断会一并迁移。</p>
+        <p class="modal-intro">选择要迁入新主题的片段，其余片段继续保留在原主题。所有编码者的判断会一并迁移；新主题继承完整定义版本历史，迁入编码的版本绑定与复核状态保持不变。</p>
         <label class="field-label">新主题名称<input class="native-input full" value={name()} onInput={(event) => setName(event.currentTarget.value)} placeholder="输入更具体的主题名称" /></label>
         <div class="split-list">
           <For each={affected()} fallback={<div class="empty-state">当前主题还没有可拆分的片段。</div>}>{(segment) => (

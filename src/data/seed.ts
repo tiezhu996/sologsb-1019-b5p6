@@ -1,14 +1,43 @@
-import type { CodingState } from '../types';
+import type { Assignment, CodingState, Theme } from '../types';
 
 export const seedState = (): CodingState => {
+  const now = new Date().toISOString();
+  const makeTheme = (
+    id: string,
+    name: string,
+    parentId: string | null,
+    color: string,
+    definition: string,
+    memo: string,
+    examples: string[],
+    versions?: Array<{ version: number; text: string; note?: string }>
+  ): Theme => {
+    const history = (versions ?? [{ version: 1, text: definition }]).map((item) => ({
+      id: `dv-${id}-v${item.version}`,
+      version: item.version,
+      text: item.text,
+      createdAt: now,
+      ...(item.note ? { note: item.note } : {})
+    }));
+    const current = history[history.length - 1];
+    return { id, name, parentId, color, definition: current.text, memo, examples, currentVersionId: current.id, definitionVersions: history };
+  };
   const themes = [
-    { id: 't-education', name: '1. 教育经历', parentId: null, color: '#267365', definition: '正式或非正式的学习经历、学校与教师记忆。', memo: '注意区分入学选择和家庭影响。', examples: ['小学时老师让我第一次接触地图'] },
-    { id: 't-school-choice', name: '1.1 学校选择', parentId: 't-education', color: '#4d9b8f', definition: '关于进入哪所学校、为何选择及其决策者的陈述。', memo: '家长和个人的理由要分别编码。', examples: [] },
-    { id: 't-teacher', name: '1.2 教师影响', parentId: 't-education', color: '#78b7ac', definition: '教师对学习兴趣、职业方向或自我认知的影响。', memo: '', examples: ['他总能把课文讲成故事'] },
-    { id: 't-work', name: '2. 工作与迁徙', parentId: null, color: '#b65d38', definition: '职业选择、工作变化以及由此产生的地域迁移。', memo: '', examples: [] },
-    { id: 't-migration', name: '2.1 迁徙决定', parentId: 't-work', color: '#d2845f', definition: '搬家、跨地区工作背后的家庭与经济决策。', memo: '', examples: [] },
-    { id: 't-family', name: '3. 家庭支持', parentId: null, color: '#3b6f95', definition: '家庭成员在教育、工作和生活转型中的支持。', memo: '', examples: [] }
+    makeTheme('t-education', '1. 教育经历', null, '#267365', '正式或非正式的学习经历、学校与教师记忆。', '注意区分入学选择和家庭影响。', ['小学时老师让我第一次接触地图']),
+    makeTheme('t-school-choice', '1.1 学校选择', 't-education', '#4d9b8f', '', '家长和个人的理由要分别编码。', [], [
+      { version: 1, text: '关于进入哪所学校、为何选择及其决策者的陈述。' },
+      { version: 2, text: '关于进入哪所学校、为何选择及其决策者的陈述；仅编码明确提及选择过程的片段，一般性家庭支持归入「3. 家庭支持」。', note: '细化边界，排除一般性家庭支持' }
+    ]),
+    makeTheme('t-teacher', '1.2 教师影响', 't-education', '#78b7ac', '教师对学习兴趣、职业方向或自我认知的影响。', '', ['他总能把课文讲成故事']),
+    makeTheme('t-work', '2. 工作与迁徙', null, '#b65d38', '职业选择、工作变化以及由此产生的地域迁移。', '', []),
+    makeTheme('t-migration', '2.1 迁徙决定', 't-work', '#d2845f', '搬家、跨地区工作背后的家庭与经济决策。', '', []),
+    makeTheme('t-family', '3. 家庭支持', null, '#3b6f95', '家庭成员在教育、工作和生活转型中的支持。', '', [])
   ];
+  const code = (themeId: string, status: Assignment['status'] = 'current', version?: number): Assignment => {
+    const theme = themes.find((item) => item.id === themeId)!;
+    const target = version ? theme.definitionVersions.find((item) => item.version === version)! : theme.definitionVersions[theme.definitionVersions.length - 1];
+    return { themeId, versionId: target.id, status };
+  };
   const lines = [
     ['00:00:08', '访谈者', '李老师，您小时候是在县城还是乡下长大的？'],
     ['00:00:14', '李岚', '我是在临河镇长大的。小学四年级以前都在村里，后来家里觉得镇上的学校更好，就把我转过去了。'],
@@ -25,13 +54,13 @@ export const seedState = (): CodingState => {
   ];
   return {
     revision: 1,
-    updatedAt: new Date().toISOString(),
+    updatedAt: now,
     activeTranscriptId: 'tr-001',
     activeSegmentId: 's-001',
     activeThemeId: 't-school-choice',
     coderA: '林研究员',
     coderB: '赵研究员',
-    transcripts: [{ id: 'tr-001', title: '李岚访谈：教育与职业选择', participant: '李岚', importedAt: new Date().toISOString(), sourceName: '示例转写' }],
+    transcripts: [{ id: 'tr-001', title: '李岚访谈：教育与职业选择', participant: '李岚', importedAt: now, sourceName: '示例转写' }],
     segments: lines.map((line, index) => ({
       id: `s-${String(index + 1).padStart(3, '0')}`,
       transcriptId: 'tr-001',
@@ -40,12 +69,12 @@ export const seedState = (): CodingState => {
       speaker: line[1],
       text: line[2],
       assignments: {
-        A: index === 1 ? ['t-school-choice'] : index === 5 ? ['t-teacher'] : index === 7 ? ['t-teacher', 't-family'] : index === 8 ? ['t-migration'] : index === 9 ? ['t-family'] : [],
-        B: index === 1 ? ['t-school-choice', 't-family'] : index === 5 ? ['t-teacher'] : index === 7 ? ['t-teacher'] : index === 8 ? ['t-migration', 't-work'] : []
+        A: index === 1 ? [code('t-school-choice', 'pending', 1)] : index === 5 ? [code('t-teacher')] : index === 7 ? [code('t-teacher'), code('t-family')] : index === 8 ? [code('t-migration')] : index === 9 ? [code('t-family')] : [],
+        B: index === 1 ? [code('t-school-choice', 'legacy', 1), code('t-family')] : index === 5 ? [code('t-teacher')] : index === 7 ? [code('t-teacher')] : index === 8 ? [code('t-migration'), code('t-work')] : []
       },
       note: ''
     })),
     themes,
-    audit: [{ id: 'a-seed', at: new Date().toISOString(), action: '初始化', detail: '载入演示访谈与两个编码者的判断' }]
+    audit: [{ id: 'a-seed', at: now, action: '初始化', detail: '载入演示访谈与两个编码者的判断；「1.1 学校选择」已发布定义 v2，部分旧编码待复核' }]
   };
 };

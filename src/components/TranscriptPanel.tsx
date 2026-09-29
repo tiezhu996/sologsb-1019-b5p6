@@ -67,7 +67,7 @@ export default function TranscriptPanel(props: { store: Store }) {
       <div class="segment-list">
         <For each={segments()}>{(segment, index) => {
           const isActive = () => props.store.state.activeSegmentId === segment.id;
-          const themeNames = () => [...new Set([...segment.assignments.A, ...segment.assignments.B])]
+          const themeNames = () => [...new Set([...segment.assignments.A, ...segment.assignments.B].map((assignment) => assignment.themeId))]
             .map((id) => props.store.state.themes.find((theme) => theme.id === id)?.name ?? '未知主题');
           return (
             <article
@@ -87,7 +87,10 @@ export default function TranscriptPanel(props: { store: Store }) {
                 <span class="segment-index">#{index() + 1}</span>
                 <span class="segment-time">{segment.time}</span>
                 <strong>{segment.speaker}</strong>
-                <Show when={segment.assignments.A.join('|') !== segment.assignments.B.join('|')}>
+                <Show when={props.store.segmentHasPending(segment)}>
+                  <span class="review-dot" title="定义已更新，存在待复核编码">待复核</span>
+                </Show>
+                <Show when={props.store.isDisagreement(segment)}>
                   <span class="conflict-dot" title="两位编码者判断不一致">分歧</span>
                 </Show>
               </div>
