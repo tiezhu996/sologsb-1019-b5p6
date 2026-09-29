@@ -4,8 +4,10 @@ import TranscriptPanel from './components/TranscriptPanel';
 import ThemeTree from './components/ThemeTree';
 import Inspector from './components/Inspector';
 import ImportDialog from './components/ImportDialog';
+import ReviewDialog from './components/ReviewDialog';
 import { CreateThemeDialog, MergeThemeDialog, SplitThemeDialog } from './components/ThemeDialogs';
 import { useCodingStore } from './store/coding-store';
+import { setsEqual } from './utils/coding';
 
 export default function App() {
   const store = useCodingStore();
@@ -14,11 +16,15 @@ export default function App() {
   const [createParent, setCreateParent] = createSignal<string | undefined>();
   const [mergeOpen, setMergeOpen] = createSignal(false);
   const [splitOpen, setSplitOpen] = createSignal(false);
+  const [reviewOpen, setReviewOpen] = createSignal(false);
   const [shortcutsOpen, setShortcutsOpen] = createSignal(false);
 
   const activeSegments = createMemo(() => store.state.segments
     .filter((segment) => segment.transcriptId === store.state.activeTranscriptId)
     .sort((a, b) => a.order - b.order));
+
+  const disagreementCount = () => store.state.segments.filter((segment) => !setsEqual(segment.assignments.A, segment.assignments.B)).length;
+  const pendingCount = () => store.pendingCount();
 
   const moveSegment = (delta: number) => {
     const segments = activeSegments();
@@ -88,6 +94,7 @@ export default function App() {
             <div class="save-state"><span classList={{ pulsing: !store.storageReady() }} />{store.remoteEnvelope() ? '检测到其他标签页修订' : store.storageReady() ? `已保存 · r${store.state.revision}` : '正在载入本地库'}</div>
             <Button color="inherit" size="small" disabled={!store.canUndo()} onClick={store.undo}>撤销</Button>
             <Button color="inherit" size="small" disabled={!store.canRedo()} onClick={store.redo}>重做</Button>
+            <Button color="inherit" size="small" onClick={() => setReviewOpen(true)}>定义复核{pendingCount() ? ` · ${pendingCount()}` : ''}</Button>
             <Button variant="outlined" color="inherit" size="small" onClick={() => setImportOpen(true)}>导入转写</Button>
             <Button variant="contained" color="secondary" size="small" onClick={() => store.downloadExport('json')}>导出编码</Button>
           </div>
@@ -108,7 +115,8 @@ export default function App() {
         <div class="project-metrics">
           <div><strong>{store.state.segments.length}</strong><span>转写片段</span></div>
           <div><strong>{store.state.themes.length}</strong><span>层级主题</span></div>
-          <div><strong>{store.state.segments.filter((segment) => segment.assignments.A.join('|') !== segment.assignments.B.join('|')).length}</strong><span>编码分歧</span></div>
+          <div><strong>{disagreementCount()}</strong><span>编码分歧</span></div>
+          <div><strong classList={{ 'metric-warn': pendingCount() > 0 }}>{pendingCount()}</strong><span>定义待复核</span></div>
           <div><strong>{store.state.revision}</strong><span>本地修订</span></div>
         </div>
       </section>
@@ -125,7 +133,8 @@ export default function App() {
           <div class="health-grid">
             <div class="health-item"><strong>{store.state.segments.filter((segment) => !segment.assignments.A.length && !segment.assignments.B.length).length}</strong><span>未编码片段</span><small>可批量选择后重新编码</small></div>
             <div class="health-item"><strong>{store.state.themes.filter((theme) => !theme.definition).length}</strong><span>缺少定义的主题</span><small>定义会帮助后续编码保持一致</small></div>
-            <div class="health-item"><strong>{store.state.segments.filter((segment) => segment.assignments.A.join('|') !== segment.assignments.B.join('|')).length}</strong><span>双编码分歧</span><small>使用双人比较逐条处理</small></div>
+            <div class="health-item"><strong>{disagreementCount()}</strong><span>双编码分歧</span><small>使用双人比较逐条处理</small></div>
+            <div class="health-item"><strong classList={{ 'metric-warn': pendingCount() > 0 }}>{pendingCount()}</strong><span>定义待复核</span><small>旧编码绑定的定义已更新，<button class="inline-link" onClick={() => setReviewOpen(true)}>去复核</button></small></div>
           </div>
         </Paper>
         <Paper class="panel export-panel" elevation={0}>
@@ -144,6 +153,7 @@ export default function App() {
       <CreateThemeDialog store={store} open={createOpen()} parentId={createParent()} onClose={() => { setCreateOpen(false); setCreateParent(undefined); }} />
       <MergeThemeDialog store={store} open={mergeOpen()} onClose={() => setMergeOpen(false)} />
       <SplitThemeDialog store={store} open={splitOpen()} onClose={() => setSplitOpen(false)} />
+      <ReviewDialog store={store} open={reviewOpen()} onClose={() => setReviewOpen(false)} />
 
       <div class="modal-backdrop" classList={{ hidden: !shortcutsOpen() }} onClick={() => setShortcutsOpen(false)}>
         <section class="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">

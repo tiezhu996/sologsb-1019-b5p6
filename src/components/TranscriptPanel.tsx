@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
 import { Button, Checkbox, Chip, Divider, Paper, Typography } from '@suid/material';
 import type { useCodingStore } from '../store/coding-store';
+import { setsEqual, themeIdsOf } from '../utils/coding';
 
 type Store = ReturnType<typeof useCodingStore>;
 
@@ -67,8 +68,9 @@ export default function TranscriptPanel(props: { store: Store }) {
       <div class="segment-list">
         <For each={segments()}>{(segment, index) => {
           const isActive = () => props.store.state.activeSegmentId === segment.id;
-          const themeNames = () => [...new Set([...segment.assignments.A, ...segment.assignments.B])]
+          const themeNames = (seg: typeof segment) => [...new Set([...themeIdsOf(seg.assignments.A), ...themeIdsOf(seg.assignments.B)])]
             .map((id) => props.store.state.themes.find((theme) => theme.id === id)?.name ?? '未知主题');
+          const segmentHasPending = (segId: string) => props.store.pendingCodings().some((row) => row.segment.id === segId && row.status === 'pending');
           return (
             <article
               class="segment-card"
@@ -87,13 +89,16 @@ export default function TranscriptPanel(props: { store: Store }) {
                 <span class="segment-index">#{index() + 1}</span>
                 <span class="segment-time">{segment.time}</span>
                 <strong>{segment.speaker}</strong>
-                <Show when={segment.assignments.A.join('|') !== segment.assignments.B.join('|')}>
+                <Show when={!setsEqual(segment.assignments.A, segment.assignments.B)}>
                   <span class="conflict-dot" title="两位编码者判断不一致">分歧</span>
+                </Show>
+                <Show when={segmentHasPending(segment.id)}>
+                  <span class="review-dot" title="该片段有编码绑定了旧版操作定义，待复核">待复核</span>
                 </Show>
               </div>
               <p>{segment.text}</p>
-              <Show when={themeNames().length}>
-                <div class="chip-line"><For each={themeNames()}>{(name) => <Chip size="small" label={name} />}</For></div>
+              <Show when={themeNames(segment).length}>
+                <div class="chip-line"><For each={themeNames(segment)}>{(name) => <Chip size="small" label={name} />}</For></div>
               </Show>
               <Show when={segment.note}><div class="segment-note">编码备忘：{segment.note}</div></Show>
             </article>

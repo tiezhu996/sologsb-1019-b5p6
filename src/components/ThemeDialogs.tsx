@@ -1,5 +1,6 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
 import type { useCodingStore } from '../store/coding-store';
+import { hasTheme } from '../utils/coding';
 
 type Store = ReturnType<typeof useCodingStore>;
 
@@ -49,7 +50,7 @@ export function SplitThemeDialog(props: { store: Store; open: boolean; onClose: 
   const [name, setName] = createSignal('');
   const [selected, setSelected] = createSignal<string[]>([]);
   const source = () => props.store.state.themes.find((theme) => theme.id === props.store.state.activeThemeId);
-  const affected = createMemo(() => props.store.state.segments.filter((segment) => source() && (segment.assignments.A.includes(source()!.id) || segment.assignments.B.includes(source()!.id))));
+  const affected = createMemo(() => props.store.state.segments.filter((segment) => source() && (hasTheme(segment.assignments.A, source()!.id) || hasTheme(segment.assignments.B, source()!.id))));
   const submit = () => {
     if (source() && name().trim() && selected().length) props.store.splitTheme(source()!.id, name().trim(), selected());
     setName(''); setSelected([]);

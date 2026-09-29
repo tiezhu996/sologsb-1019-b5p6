@@ -2,6 +2,7 @@ import { For, Show, createEffect, createMemo, createSignal } from 'solid-js';
 import { Button, Chip, Divider, Paper, Typography } from '@suid/material';
 import type { Theme } from '../types';
 import type { useCodingStore } from '../store/coding-store';
+import { codingStatus, hasTheme, setsEqual, STATUS_SHORT, versionLabel } from '../utils/coding';
 
 type Store = ReturnType<typeof useCodingStore>;
 
@@ -10,6 +11,7 @@ export default function Inspector(props: { store: Store }) {
   const [memo, setMemo] = createSignal('');
   const [example, setExample] = createSignal('');
   const [segmentNote, setSegmentNote] = createSignal('');
+  const [showHistory, setShowHistory] = createSignal(false);
   const [section, setSection] = createSignal<'theme' | 'compare' | 'audit'>('theme');
 
   const theme = createMemo(() => props.store.state.themes.find((item) => item.id === props.store.state.activeThemeId));
@@ -17,7 +19,7 @@ export default function Inspector(props: { store: Store }) {
   const citations = createMemo(() => {
     const current = theme();
     if (!current) return [];
-    return props.store.state.segments.filter((item) => item.assignments.A.includes(current.id) || item.assignments.B.includes(current.id));
+    return props.store.state.segments.filter((item) => hasTheme(item.assignments.A, current.id) || hasTheme(item.assignments.B, current.id));
   });
 
   createEffect(() => {
@@ -25,20 +27,40 @@ export default function Inspector(props: { store: Store }) {
     setDefinition(current?.definition ?? '');
     setMemo(current?.memo ?? '');
     setExample('');
+    setShowHistory(false);
   });
 
   createEffect(() => setSegmentNote(segment()?.note ?? ''));
 
-  const saveThemeField = (field: 'definition' | 'memo', value: string) => {
+  const saveDefinition = () => {
     const current = theme();
-    if (!current || current[field] === value) return;
-    props.store.updateTheme(current.id, { [field]: value } as Partial<Theme>, field === 'definition' ? '主题定义' : '研究备忘录');
+    if (!current || current.definition === definition().trim()) return;
+    props.store.publishDefinition(current.id, definition());
+  };
+
+  const saveMemo = () => {
+    const current = theme();
+    if (!current || current.memo === memo()) return;
+    props.store.updateTheme(current.id, { memo: memo() } as Partial<Theme>, '研究备忘录');
   };
 
   const saveNote = () => {
     const current = segment();
     if (!current || current.note === segmentNote()) return;
     props.store.updateSegment(current.id, { speaker: current.speaker, time: current.time, text: current.text, note: segmentNote() });
+  };
+
+  const citationStatus = (segmentId: string) => {
+    const current = theme();
+    if (!current) return null;
+    const seg = props.store.state.segments.find((item) => item.id === segmentId);
+    if (!seg) return null;
+    const statuses = (['A', 'B'] as const).flatMap((coder) =>
+      seg.assignments[coder].filter((ref) => ref.themeId === current.id).map((ref) => codingStatus(ref, current))
+    );
+    if (statuses.includes('pending')) return 'pending';
+    if (statuses.includes('kept')) return 'kept';
+    return 'current';
   };
 
   return (
@@ -68,10 +90,26 @@ export default function Inspector(props: { store: Store }) {
               </div>}
             </Show>
             <label class="field-label">操作定义
-              <textarea class="native-textarea" value={definition()} onInput={(event) => setDefinition(event.currentTarget.value)} onBlur={() => saveThemeField('definition', definition())} placeholder="说明什么内容应/不应归入该主题" />
+              <span class="version-badge" title="当前操作定义版本">当前 {versionLabel(current().definitionVersion)}</span>
+              <textarea class="native-textarea" value={definition()} onInput={(event) => setDefinition(event.currentTarget.value)} onBlur={saveDefinition} placeholder="说明什么内容应/不应归入该主题；修改后自动发布新版本，旧编码进入待复核" />
             </label>
+            <Show when={current().definitionHistory.length > 1}>
+              <div class="history-toggle">
+                <button class="link-button" onClick={() => setShowHistory((value) => !value)}>{showHistory() ? '收起历史版本' : `查看历史版本（${current().definitionHistory.length}）`}</button>
+              </div>
+              <Show when={showHistory()}>
+                <div class="version-history">
+                  <For each={[...current().definitionHistory].reverse()}>{(entry) => (
+                    <div class="version-row" classList={{ current: entry.version === current().definitionVersion }}>
+                      <div class="version-head"><span class="version-tag">{versionLabel(entry.version)}</span><span>{new Date(entry.publishedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>
+                      <p>{entry.definition || '（空定义）'}</p>
+                    </div>
+                  )}</For>
+                </div>
+              </Show>
+            </Show>
             <label class="field-label">研究备忘录
-              <textarea class="native-textarea" value={memo()} onInput={(event) => setMemo(event.currentTarget.value)} onBlur={() => saveThemeField('memo', memo())} placeholder="记录判断边界、疑问或编码规则" />
+              <textarea class="native-textarea" value={memo()} onInput={(event) => setMemo(event.currentTarget.value)} onBlur={saveMemo} placeholder="记录判断边界、疑问或编码规则" />
             </label>
             <label class="field-label">添加典型示例
               <div class="inline-input">
@@ -85,12 +123,15 @@ export default function Inspector(props: { store: Store }) {
             <Show when={citations().length}>
               <div class="citation-heading">回原文引用 <span>{citations().length} 条</span></div>
               <div class="citation-list">
-                <For each={citations()}>{(item) => (
-                  <button class="citation-link" onClick={() => { props.store.selectSegment(item.id); window.setTimeout(() => document.querySelector('.segment-card.active')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }}>
-                    <span>{item.time} · {item.speaker}</span>
-                    <p>{item.text}</p>
-                  </button>
-                )}</For>
+                <For each={citations()}>{(item) => {
+                  const status = citationStatus(item.id);
+                  return (
+                    <button class="citation-link" onClick={() => { props.store.selectSegment(item.id); window.setTimeout(() => document.querySelector('.segment-card.active')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }}>
+                      <span>{item.time} · {item.speaker}{status && status !== 'current' ? <em class={`status-tag ${status}`}>{STATUS_SHORT[status]}</em> : null}</span>
+                      <p>{item.text}</p>
+                    </button>
+                  );
+                }}</For>
               </div>
             </Show>
           </>}
@@ -104,7 +145,13 @@ export default function Inspector(props: { store: Store }) {
             <div class="compare-grid">
               <div class="coder-column">
                 <div class="coder-header"><span class="avatar">A</span><strong>{props.store.state.coderA}</strong></div>
-                <For each={activeSegment().assignments.A} fallback={<div class="muted">未编码</div>}>{(id) => <div class="compare-chip"><Chip size="small" label={props.store.state.themes.find((item) => item.id === id)?.name ?? '未知主题'} /><button class="icon-text" onClick={() => props.store.toggleAssignment(activeSegment().id, 'A', id, false)}>×</button></div>}</For>
+                <For each={activeSegment().assignments.A} fallback={<div class="muted">未编码</div>}>{(ref) => {
+                  const refTheme = () => props.store.state.themes.find((item) => item.id === ref.themeId);
+                  const status = () => codingStatus(ref, refTheme());
+                  return (
+                    <div class="compare-chip"><Chip size="small" label={refTheme()?.name ?? '未知主题'} /><span class={`status-tag ${status()}`} title={`绑定${versionLabel(ref.definitionVersion)} · ${STATUS_SHORT[status()]}`}>{STATUS_SHORT[status()]}</span><button class="icon-text" onClick={() => props.store.toggleAssignment(activeSegment().id, 'A', ref.themeId, false)}>×</button></div>
+                  );
+                }}</For>
                 <select class="native-select full" value="" onChange={(event) => event.currentTarget.value && props.store.toggleAssignment(activeSegment().id, 'A', event.currentTarget.value, true)}>
                   <option value="">＋ 给编码者 A 添加主题</option>
                   <For each={props.store.orderedThemes()}>{(item) => <option value={item.id}>{item.name}</option>}</For>
@@ -112,14 +159,20 @@ export default function Inspector(props: { store: Store }) {
               </div>
               <div class="coder-column">
                 <div class="coder-header"><span class="avatar b">B</span><strong>{props.store.state.coderB}</strong></div>
-                <For each={activeSegment().assignments.B} fallback={<div class="muted">未编码</div>}>{(id) => <div class="compare-chip"><Chip size="small" label={props.store.state.themes.find((item) => item.id === id)?.name ?? '未知主题'} /><button class="icon-text" onClick={() => props.store.toggleAssignment(activeSegment().id, 'B', id, false)}>×</button></div>}</For>
+                <For each={activeSegment().assignments.B} fallback={<div class="muted">未编码</div>}>{(ref) => {
+                  const refTheme = () => props.store.state.themes.find((item) => item.id === ref.themeId);
+                  const status = () => codingStatus(ref, refTheme());
+                  return (
+                    <div class="compare-chip"><Chip size="small" label={refTheme()?.name ?? '未知主题'} /><span class={`status-tag ${status()}`} title={`绑定${versionLabel(ref.definitionVersion)} · ${STATUS_SHORT[status()]}`}>{STATUS_SHORT[status()]}</span><button class="icon-text" onClick={() => props.store.toggleAssignment(activeSegment().id, 'B', ref.themeId, false)}>×</button></div>
+                  );
+                }}</For>
                 <select class="native-select full" value="" onChange={(event) => event.currentTarget.value && props.store.toggleAssignment(activeSegment().id, 'B', event.currentTarget.value, true)}>
                   <option value="">＋ 给编码者 B 添加主题</option>
                   <For each={props.store.orderedThemes()}>{(item) => <option value={item.id}>{item.name}</option>}</For>
                 </select>
               </div>
             </div>
-            <Show when={activeSegment().assignments.A.join('|') !== activeSegment().assignments.B.join('|')} fallback={<div class="agreement">✓ 当前判断完全一致</div>}>
+            <Show when={!setsEqual(activeSegment().assignments.A, activeSegment().assignments.B)} fallback={<div class="agreement">✓ 当前判断完全一致</div>}>
               <div class="disagreement">⚠ 当前判断存在分歧，导出结果仍会同时保留两位编码者记录。</div>
             </Show>
             <label class="field-label">片段编码备忘
@@ -138,7 +191,7 @@ export default function Inspector(props: { store: Store }) {
           <For each={props.store.state.themes.filter((item) => item.definition || item.memo)}>{(item) => (
             <div class="citation" onClick={() => props.store.selectTheme(item.id)}>
               <strong>{item.name}</strong>
-              <span>{item.definition ? '含操作定义' : ''}{item.definition && item.memo ? ' · ' : ''}{item.memo ? '含备忘录' : ''}</span>
+              <span>{item.definition ? `含操作定义 · ${versionLabel(item.definitionVersion)}` : ''}{item.definition && item.memo ? ' · ' : ''}{item.memo ? '含备忘录' : ''}</span>
             </div>
           )}</For>
         </div>

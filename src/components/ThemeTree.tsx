@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
 import { Button, Chip, Paper, Typography } from '@suid/material';
 import type { useCodingStore } from '../store/coding-store';
+import { hasTheme } from '../utils/coding';
 
 type Store = ReturnType<typeof useCodingStore>;
 
@@ -10,8 +11,10 @@ export default function ThemeTree(props: { store: Store; onCreate: (parentId?: s
   const activeSegment = () => props.store.state.segments.find((segment) => segment.id === props.store.state.activeSegmentId);
 
   const countFor = (themeId: string) => props.store.state.segments.reduce((count, segment) => (
-    count + (segment.assignments.A.includes(themeId) || segment.assignments.B.includes(themeId) ? 1 : 0)
+    count + (hasTheme(segment.assignments.A, themeId) || hasTheme(segment.assignments.B, themeId) ? 1 : 0)
   ), 0);
+
+  const pendingFor = (themeId: string) => props.store.pendingCodings(themeId).filter((row) => row.status === 'pending').length;
 
   return (
     <Paper class="panel tree-panel" elevation={0}>
@@ -37,13 +40,17 @@ export default function ThemeTree(props: { store: Store; onCreate: (parentId?: s
             }
             return level;
           };
-          const assignmentA = () => activeSegment()?.assignments.A.includes(theme.id) ?? false;
-          const assignmentB = () => activeSegment()?.assignments.B.includes(theme.id) ?? false;
+          const assignmentA = () => activeSegment() ? hasTheme(activeSegment()!.assignments.A, theme.id) : false;
+          const assignmentB = () => activeSegment() ? hasTheme(activeSegment()!.assignments.B, theme.id) : false;
+          const pending = () => pendingFor(theme.id);
           return (
             <div class="theme-row" classList={{ active: props.store.state.activeThemeId === theme.id, disagree: assignmentA() !== assignmentB() }}>
               <button class="theme-main" style={{ '--depth': depth(), '--theme-color': theme.color }} onClick={() => props.store.selectTheme(theme.id)}>
                 <span class="theme-color" />
                 <span class="theme-name">{theme.name}</span>
+                <Show when={pending() > 0}>
+                  <span class="theme-pending" title={`${pending()} 条编码绑定旧版定义，待复核`}>{pending()}</span>
+                </Show>
                 <span class="theme-count">{countFor(theme.id)}</span>
               </button>
               <div class="theme-actions">

@@ -179,3 +179,54 @@ kbd { justify-self: start; padding: 3px 7px; border: 1px solid #ccd4cf; border-b
 .citation-link:hover { border-color: #9dbbb3; background: #f0f6f2; }
 .citation-link span { color: #788983; font-size: 9px; }
 .citation-link p { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+
+/* ===== 操作定义版本与复核 ===== */
+.metric-warn { color: var(--danger) !important; }
+.inline-link { border: 0; padding: 0; background: transparent; color: var(--forest); font-size: 10px; text-decoration: underline; }
+.review-dot { margin-left: 6px; color: #8a5a1e; background: #fbe9cf; border-radius: 100px; padding: 2px 7px; }
+.theme-pending { margin-left: auto; min-width: 18px; padding: 1px 5px; text-align: center; border-radius: 10px; background: #fbe9cf; color: #8a5a1e; font-size: 9px; font-weight: 700; }
+.version-badge { float: right; padding: 2px 8px; border-radius: 100px; background: #e3eee9; color: var(--forest); font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+.history-toggle { margin-top: 6px; }
+.version-history { margin-top: 6px; border: 1px solid var(--line); border-radius: 9px; background: #f7f9f6; overflow: hidden; }
+.version-row { padding: 8px 10px; border-bottom: 1px solid #e6ebe7; }
+.version-row:last-child { border-bottom: 0; }
+.version-row.current { background: #eef5f1; }
+.version-head { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 9px; }
+.version-tag { padding: 1px 7px; border-radius: 100px; background: #dde9e4; color: var(--forest); font-weight: 700; }
+.version-row.current .version-tag { background: var(--forest); color: #fff; }
+.version-row p { margin: 5px 0 0; color: #334843; font-size: 11px; line-height: 1.55; }
+.status-tag { display: inline-block; padding: 1px 7px; border-radius: 100px; font-size: 9px; font-weight: 700; font-style: normal; white-space: nowrap; }
+.status-tag.current { background: #e3eee9; color: var(--forest); }
+.status-tag.pending { background: #fbe9cf; color: #8a5a1e; }
+.status-tag.kept { background: #eef1ee; color: #5c6b66; }
+.citation-link .status-tag { margin-left: 6px; }
+.compare-chip { display: flex; align-items: center; gap: 5px; }
+.compare-chip .status-tag { flex: 0 0 auto; }
+.review-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.review-summary div { padding: 11px; background: #f1f4f1; border-radius: 8px; }
+.review-summary strong { display: block; font-family: "Songti SC", serif; font-size: 21px; color: var(--forest); }
+.review-summary span { color: var(--muted); font-size: 10px; }
+.review-themes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.review-theme-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 100px; background: #fff; color: var(--ink); font-size: 11px; }
+.review-theme-chip.active { border-color: var(--forest); background: #eef5f1; }
+.review-theme-chip .MuiChip-root { height: 18px !important; font-size: 9px !important; }
+.review-versions { color: #8a5a1e; font-size: 9px; }
+.review-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.field-label.inline { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+.field-label.inline .native-select { min-width: 180px; }
+.review-list { max-height: 300px; overflow-y: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 9px; }
+.review-list.kept { margin-top: 8px; }
+.review-item { display: flex; align-items: stretch; gap: 8px; padding: 9px 10px; border-bottom: 1px solid #e6ebe7; }
+.review-item:last-child { border-bottom: 0; }
+.review-item.kept { opacity: .82; }
+.review-main { flex: 1; min-width: 0; text-align: left; border: 0; background: transparent; color: inherit; padding: 0; cursor: pointer; }
+.review-item.kept .review-main { cursor: default; }
+.review-meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+.review-coder { color: #5c6b66; }
+.review-main p { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #334843; }
+.review-tags { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.review-tags .MuiChip-root { height: 19px !important; font-size: 9px !important; }
+.review-actions { display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+.review-actions .MuiButton-root { font-size: 10px !important; padding: 4px 10px !important; }
+.review-kept-toggle { margin-top: 10px; }
+
